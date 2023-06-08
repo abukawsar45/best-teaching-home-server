@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 5000;
 
@@ -52,8 +53,8 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
-    const userCollection = client.db('educationalDb').collection('users');
+    await client.connect();
+    const studentCollection = client.db('educationalDb').collection('students');
     const subjectCollection = client.db('educationalDb').collection('subjects');
     const addmitCollection = client.db('educationalDb').collection('addmits');
     
@@ -63,16 +64,39 @@ async function run() {
     const verifyAdmin =async (req,res,next)=>{
       const email = req.decoded.email;
       const query ={email: email};
-      const user = await userCollection.findOne(query);
+      const user = await studentCollection.findOne(query);
       if(user?.email !== 'admin'){
         return res.status(403).send({error:true, message: 'forbidden access'})
       }
       next();
     }
 
+    // students management
+    app.post('/students', async(req,res)=>{
+      const student = req.body;
+      const query = {email: student.email};
+      const existStudent = await studentCollection.findOne(query);
+      if(existStudent){
+        return res.send({message: 'Student already exist'});
+      }
+      const result = await studentCollection.insertOne(student);
+      res.send(result)
+    })
+
+// jwt 
+    app.post('/jwt', (req,res)=>{
+      const student = req.body;
+      console.log(student);
+      const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
+        expiresIn:'1h'
+      })
+      res.send({token})
+      console.log({token});
+    })
+
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
