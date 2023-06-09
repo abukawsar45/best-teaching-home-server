@@ -54,13 +54,11 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const studentCollection = client.db('educationalDb').collection('students');
+        const studentCollection = client.db('educationalDb').collection('students');
     const subjectCollection = client.db('educationalDb').collection('subjects');
     const addmitCollection = client.db('educationalDb').collection('addmits');
-    
-    
 
-    // verify admin
+      // verify admin
     const verifyAdmin =async (req,res,next)=>{
       const email = req.decoded.email;
       const query ={email: email};
@@ -71,16 +69,8 @@ async function run() {
       next();
     }
 
-    // students management
 
-    // app.get('/instructors', async (req,res)=>{
-    //   console.log('object');
-    //     const result = await studentCollection.find().toArray();
-    // res.send(result);
-    // })
-
-
-app.get('/students/:category', async (req, res) => {
+    app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
   console.log(category);
     let filteredStudents;
@@ -90,10 +80,14 @@ app.get('/students/:category', async (req, res) => {
       filteredStudents = await studentCollection.find({ role: 'student' }).toArray();
     } else if (category === 'instructor') {
       filteredStudents = await studentCollection.find({ role: 'instructor' }).toArray();
-    } 
+    } else{
+      filteredStudents = await studentCollection.find().toArray();
+    }
     res.send(filteredStudents);
 });
 
+
+  // all student post
   app.post('/students', async(req,res)=>{
       const student = req.body;
       const query = {email: student.email};
@@ -104,6 +98,15 @@ app.get('/students/:category', async (req, res) => {
       const result = await studentCollection.insertOne(student);
       res.send(result)
     })
+
+// all subject post
+app.post('/subjects', async (req, res) => {
+  const subject = req.body;
+  console.log('subject'); // This line logs the string 'subject' to the console
+  const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
+  res.send(result); // Sends the result as the response
+});
+
 
 // jwt 
     app.post('/jwt', (req,res)=>{
@@ -116,9 +119,9 @@ app.get('/students/:category', async (req, res) => {
       // console.log({token});
     })
 
-
+    
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
@@ -126,6 +129,7 @@ app.get('/students/:category', async (req, res) => {
   }
 }
 run().catch(console.dir);
+
 
 
 
