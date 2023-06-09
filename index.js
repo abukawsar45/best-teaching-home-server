@@ -80,15 +80,21 @@ async function run() {
     // })
 
 
-app.get('/students', async (req, res) => {
-  try {
-    const students = await studentCollection.find().toArray();
-    res.send(students);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
-  }
-});    app.post('/students', async(req,res)=>{
+app.get('/students/:category', async (req, res) => {
+  const category = req.params.category;
+  console.log(category);
+    let filteredStudents;
+    if (category === 'admin') {
+      filteredStudents = await studentCollection.find({ role: 'admin' }).toArray();
+    } else if (category === 'student') {
+      filteredStudents = await studentCollection.find({ role: 'student' }).toArray();
+    } else if (category === 'instructor') {
+      filteredStudents = await studentCollection.find({ role: 'instructor' }).toArray();
+    } 
+    res.send(filteredStudents);
+});
+
+  app.post('/students', async(req,res)=>{
       const student = req.body;
       const query = {email: student.email};
       const existStudent = await studentCollection.findOne(query);
@@ -107,7 +113,7 @@ app.get('/students', async (req, res) => {
         expiresIn:'1h'
       })
       res.send({token})
-      console.log({token});
+      // console.log({token});
     })
 
 
