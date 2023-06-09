@@ -38,7 +38,7 @@ const verifyJWT = (req,res,next)=>{
 
 
 
-
+// const uri = 'mongodb://0.0.0.0:27017'
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.9lqzgjv.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -72,7 +72,23 @@ async function run() {
     }
 
     // students management
-    app.post('/students', async(req,res)=>{
+
+    // app.get('/instructors', async (req,res)=>{
+    //   console.log('object');
+    //     const result = await studentCollection.find().toArray();
+    // res.send(result);
+    // })
+
+
+app.get('/students', async (req, res) => {
+  try {
+    const students = await studentCollection.find().toArray();
+    res.send(students);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
+});    app.post('/students', async(req,res)=>{
       const student = req.body;
       const query = {email: student.email};
       const existStudent = await studentCollection.findOne(query);
@@ -86,7 +102,7 @@ async function run() {
 // jwt 
     app.post('/jwt', (req,res)=>{
       const student = req.body;
-      console.log(student);
+      // console.log(student);
       const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
         expiresIn:'1h'
       })
