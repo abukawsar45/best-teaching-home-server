@@ -3,7 +3,8 @@ const cors = require('cors');
 require('dotenv').config();
 const app = express();
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const req = require('express/lib/request');
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -70,6 +71,16 @@ async function run() {
     }
 
 
+
+    app.get('/allUser', async (req,res)=>{
+      const results = await studentCollection.find().toArray();
+      res.send(results);
+    } )
+    app.get('/subjects', async (req,res)=>{
+      const results = await subjectCollection.find().toArray();
+      res.send(results);
+    } )
+
     app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
   console.log(category);
@@ -80,8 +91,6 @@ async function run() {
       filteredStudents = await studentCollection.find({ role: 'student' }).toArray();
     } else if (category === 'instructor') {
       filteredStudents = await studentCollection.find({ role: 'instructor' }).toArray();
-    } else{
-      filteredStudents = await studentCollection.find().toArray();
     }
     res.send(filteredStudents);
 });
@@ -90,6 +99,7 @@ async function run() {
   // all student post
   app.post('/students', async(req,res)=>{
       const student = req.body;
+      // console.log('93');
       const query = {email: student.email};
       const existStudent = await studentCollection.findOne(query);
       if(existStudent){
@@ -119,6 +129,19 @@ app.post('/subjects', async (req, res) => {
       // console.log({token});
     })
 
+
+    app.patch('/students/admin:id',async (req,res)=>{
+      const id= req.params.id;
+      console.log(id);
+      const filter = {_id: new ObjectId(id)};
+      const updateRole = {
+        $set: {
+          role:'admin'
+        }
+      };
+      const result = await studentCollection.updateOne(filter,updateRole); 
+      res.send(result)
+    })
     
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
