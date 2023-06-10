@@ -14,15 +14,12 @@ app.use(express.json());
 /* verify jwt token */
 const verifyJWT = (req,res,next)=>{
   const authorization = req.headers.authorization;
-  // clg
-  // console.log(authorization);
-
   if(!authorization){
     return res.status(401).send({error: true, message: 'unauthorized access'})
   }
   const token = authorization.split(' ')[1];
   // clg
-  console.log(token);
+  // console.log(token);
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(error, decoded)=>{
     if(error){
@@ -61,13 +58,73 @@ async function run() {
 // jwt post
     app.post('/jwt', (req,res)=>{
       const student = req.body;
-      console.log(student);
+      // console.log(student);
       const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
         expiresIn:'1h'
       })
       res.send({token})
-      console.log({token});
+      // console.log({token});
     })
+
+    app.get('/class/:id',async (req,res)=>{
+      const id = req.params.id;
+      // console.log(id);
+      const query = {_id: new ObjectId(id) };
+      const result = await subjectCollection.findOne(query);
+      res.send(result);
+    } )
+
+    // update data
+app.patch('/classesStatus/:id', async (req, res) => {
+  const id = req.params.id;
+  const status = req.query.status;
+  // console.log(id);
+  const query = { _id: new ObjectId(id) };
+  let updateDoc = {};
+  if (status === 'approve') {
+    updateDoc = {
+      $set: {
+        status: 'approved'
+      }
+    };
+  } else {
+    updateDoc = {
+      $set: {
+        status: 'deny'
+      }
+    };
+  }
+  const result = await subjectCollection.updateOne(query, updateDoc);
+  res.send(result);
+});
+app.put('/feedback/:id', async (req, res) => {
+  const id = req.params.id;
+  const text = req.body.feedback ;
+  console.log(id, text);
+  const query = { _id: new ObjectId(id) };
+  const updateDoc = {
+      $set: {
+        feedback: text
+      }
+    };
+    console.log(updateDoc);
+  const result = await subjectCollection.updateOne(query, updateDoc);
+  res.send(result);
+});
+
+    app.put('/updateClass/:id', async (req,res)=>{
+      const id = req.params.id;
+      // console.log(id);
+      const query = ({_id: new ObjectId(id) });
+      const updateClass = req.body;
+      const updateDoc = {
+        $set: {
+          ...updateClass
+        }
+      }
+      const result = await subjectCollection.updateOne(query, updateDoc);
+      res.send(result);
+    } )
 
       // verify admin
     const verifyAdmin =async (req,res,next)=>{
@@ -83,22 +140,34 @@ async function run() {
 
 
     // verify admin
-    app.get('/users/admin/:email', async (req,res)=>{
-      const email = req.params.email;
 
-      console.log(email);
+
+    app.get('/instructor/class/:email',verifyJWT, async (req,res)=>{
+      const email=req.params.email;
+      // console.log(email,87);
+      const result = await subjectCollection.find({email: email}).sort({date: -1}).toArray();
+      res.send(result)
+    } )
+
+    app.get('/users/admin/:email',verifyJWT, async (req,res)=>{
+      const email = req.params.email;
+    if(req.decoded.email !== email ){
+        return res.send({student : false, instructor: false});
+      }
+      // console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {admin: user?.role === 'admin'};
       res.send(result);
     })
     // verify instructor
-    app.get('/users/instructor/:email', async (req,res)=>{
+    app.get('/users/instructor/:email',verifyJWT, async (req,res)=>{
       const email = req.params.email;
       // if(req.email !== email ){
-      //   return res.send({instructor : false})
-      // }
-      console.log(email);
+       if(req.decoded.email !== email ){
+        return res.send({student : false, admin: false});
+      }
+      // console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {instructor: user?.role === 'instructor'};
@@ -106,10 +175,11 @@ async function run() {
     })
     app.get('/users/student/:email',verifyJWT, async (req,res)=>{
       const email = req.params.email;
-      if(req.email !== email ){
-        return res.send({instructor : false})
+      // console.log('109', {email, amar:email});
+      if(req.decoded.email !== email ){
+        return res.send({instructor : false, admin: false});
       }
-      console.log(email);
+      // console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {student: user?.role === 'student'};
@@ -133,7 +203,7 @@ async function run() {
 
     app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
-  console.log(category);
+  // console.log(category);
     let filteredStudents;
     if (category === 'admin') {
       filteredStudents = await studentCollection.find({ role: 'admin' }).toArray();
@@ -152,6 +222,7 @@ async function run() {
       // console.log('93');
       const query = {email: student.email};
       const existStudent = await studentCollection.findOne(query);
+      // console.log(existStudent,'099009');
       if(existStudent){
         return res.send({message: 'Student already exist'});
       }
@@ -162,7 +233,7 @@ async function run() {
 // all subject post
 app.post('/subjects', async (req, res) => {
   const subject = req.body;
-  console.log('subject'); // This line logs the string 'subject' to the console
+  // console.log('subject'); // This line logs the string 'subject' to the console
   const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
   res.send(result); // Sends the result as the response
 });
@@ -170,7 +241,7 @@ app.post('/subjects', async (req, res) => {
 
     app.patch('/students/admin:id',async (req,res)=>{
       const id= req.params.id;
-      console.log(id);
+      // console.log(id);
       const filter = {_id: new ObjectId(id)};
       const updateRole = {
         $set: {
