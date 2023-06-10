@@ -196,7 +196,8 @@ app.put('/feedback/:id', async (req, res) => {
     // } )
 
         app.get('/allClass', async (req,res)=>{
-      const results = await subjectCollection.find().toArray();
+          const query = {status: 'approved'};
+      const results = await subjectCollection.find(query).toArray();
       res.send(results);
     } )
    
