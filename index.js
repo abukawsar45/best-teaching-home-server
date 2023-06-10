@@ -13,11 +13,9 @@ app.use(express.json());
 
 /* verify jwt token */
 const verifyJWT = (req,res,next)=>{
-  // clg
-  console.log( req.headers.authorization);
   const authorization = req.headers.authorization;
   // clg
-  console.log(authorization);
+  // console.log(authorization);
 
   if(!authorization){
     return res.status(401).send({error: true, message: 'unauthorized access'})
@@ -54,10 +52,22 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
         const studentCollection = client.db('educationalDb').collection('students');
     const subjectCollection = client.db('educationalDb').collection('subjects');
     const addmitCollection = client.db('educationalDb').collection('addmits');
+
+    
+// jwt post
+    app.post('/jwt', (req,res)=>{
+      const student = req.body;
+      console.log(student);
+      const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
+        expiresIn:'1h'
+      })
+      res.send({token})
+      console.log({token});
+    })
 
       // verify admin
     const verifyAdmin =async (req,res,next)=>{
@@ -72,14 +82,54 @@ async function run() {
 
 
 
+    // verify admin
+    app.get('/users/admin/:email', async (req,res)=>{
+      const email = req.params.email;
+
+      console.log(email);
+      const query = {email: email};
+      const user = await studentCollection.findOne(query);
+      const result = {admin: user?.role === 'admin'};
+      res.send(result);
+    })
+    // verify instructor
+    app.get('/users/instructor/:email', async (req,res)=>{
+      const email = req.params.email;
+      // if(req.email !== email ){
+      //   return res.send({instructor : false})
+      // }
+      console.log(email);
+      const query = {email: email};
+      const user = await studentCollection.findOne(query);
+      const result = {instructor: user?.role === 'instructor'};
+      res.send(result);
+    })
+    app.get('/users/student/:email',verifyJWT, async (req,res)=>{
+      const email = req.params.email;
+      if(req.email !== email ){
+        return res.send({instructor : false})
+      }
+      console.log(email);
+      const query = {email: email};
+      const user = await studentCollection.findOne(query);
+      const result = {student: user?.role === 'student'};
+      res.send(result);
+    })
+
     app.get('/allUser', async (req,res)=>{
       const results = await studentCollection.find().toArray();
       res.send(results);
     } )
-    app.get('/subjects', async (req,res)=>{
+    // app.get('/subjects', async (req,res)=>{
+    //   const results = await subjectCollection.find().toArray();
+    //   res.send(results);
+    // } )
+
+        app.get('/allClass', async (req,res)=>{
       const results = await subjectCollection.find().toArray();
       res.send(results);
     } )
+   
 
     app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
@@ -116,18 +166,6 @@ app.post('/subjects', async (req, res) => {
   const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
   res.send(result); // Sends the result as the response
 });
-
-
-// jwt 
-    app.post('/jwt', (req,res)=>{
-      const student = req.body;
-      // console.log(student);
-      const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
-        expiresIn:'1h'
-      })
-      res.send({token})
-      // console.log({token});
-    })
 
 
     app.patch('/students/admin:id',async (req,res)=>{
