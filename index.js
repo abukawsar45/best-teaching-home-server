@@ -53,6 +53,7 @@ async function run() {
         const studentCollection = client.db('educationalDb').collection('students');
     const subjectCollection = client.db('educationalDb').collection('subjects');
     const addmitCollection = client.db('educationalDb').collection('addmits');
+    const orderClassCollection = client.db('educationalDb').collection('orderClass');
 
     
 // jwt post
@@ -65,6 +66,71 @@ async function run() {
       res.send({token})
       // console.log({token});
     })
+
+
+app.get('/orderClass/:email', async (req, res) => {
+  const email = req.params.email;
+  const orderClassName = req.query.orderClassName;
+  console.log({email,orderClassName});
+
+  // const query = {
+  //   customerEmail: email,
+  //   orderClassName: orderClassName,
+  // };
+
+  // const existingClass = await orderClassCollection.findOne(query);
+
+  // if (existingClass) {
+  //   return res.send({ orderClassNameExists: true });
+  // } else {
+  //   return res.send({ orderClassNameExists: false });
+  // }
+});
+
+
+    /*  app.get('/users/instructor/:email',verifyJWT, async (req,res)=>{
+      const email = req.params.email;
+      // if(req.email !== email ){
+       if(req.decoded.email !== email ){
+        return res.send({student : false, admin: false});
+      }
+      // console.log(email);
+      const query = {email: email};
+      const user = await studentCollection.findOne(query);
+      const result = {instructor: user?.role === 'instructor'};
+      res.send(result);
+    }) */
+
+app.post('/orderClass', async (req, res) => {
+  const orderClass = req.body;
+  const query = { orderClassName: orderClass.orderClassName };
+  console.log({ query });
+  const existClass = await orderClassCollection.findOne(query);
+  console.log(existClass, '744444');
+  
+  if (existClass) {
+    return res.send({ message: 'This class already exists' });
+  }
+  
+  const result = await orderClassCollection.insertOne(orderClass);
+  res.send(result);
+});
+
+
+    /*   // console.log('93');
+      const query = {email: student.email};
+      const existStudent = await studentCollection.findOne(query);
+      // console.log(existStudent,'099009');
+      if(existStudent){
+        return res.send({message: 'Student already exist'});
+      } */
+    // all subject post
+app.post('/subjects', async (req, res) => {
+  const subject = req.body;
+  // console.log('subject'); // This line logs the string 'subject' to the console
+  const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
+  res.send(result); // Sends the result as the response
+});
 
     app.get('/class/:id',async (req,res)=>{
       const id = req.params.id;
@@ -198,6 +264,16 @@ app.put('/feedback/:id', async (req, res) => {
         app.get('/allClass', async (req,res)=>{
           const query = {status: 'approved'};
       const results = await subjectCollection.find(query).toArray();
+      res.send(results);
+    } )
+
+        app.get('/admin/allClass/:email',verifyJWT,verifyAdmin, async (req,res)=>{
+           const email = req.params.email;
+    if(req.decoded.email !== email ){
+        return res.send({admin : false});
+      }
+
+      const results = await subjectCollection.find().sort({date: -1}).toArray();
       res.send(results);
     } )
    
