@@ -67,24 +67,54 @@ async function run() {
       // console.log({token});
     })
 
+     app.get('/selectedClass/:email',verifyJWT, async (req, res) => {
+    const email = req.params.email;
+    // console.log({email},'000000');
+      if(req.decoded.email !== email ){
+        return res.send({admin : false});
+      }
+
+    const query ={ customerEmail: email}
+    const result = await orderClassCollection.find(query).toArray();
+    res.send(result);
+  })
+
+
+
+  app.delete('/selectedClass/:id', async (req,res)=>{
+    const id = req.params.id;
+    console.log(id);
+    const query = {_id: new ObjectId(id)};
+    const result = await orderClassCollection.deleteOne(query);
+    res.send(result);
+  })
+  // app.delete('/orderClass/:id',async (req,res) => {
+  //   const id = req.params.id;
+  //   console.log({id});
+  //   const query = {_id: new Object(id)};
+  //   const result = await orderClassCollection.deleteOne(query);
+  //   res.send(result);
+  //   console.log({result});
+  // })
+
 
 app.get('/orderClass/', async (req, res) => {
   const email = req.query.email;
   const orderClassName = req.query.orderClassName;
   console.log({email,orderClassName});
 
-  // const query = {
-  //   customerEmail: email,
-  //   orderClassName: orderClassName,
-  // };
+  const query = {
+    customerEmail: email,
+    orderClassName: orderClassName,
+  };
 
-  // const existingClass = await orderClassCollection.findOne(query);
+  const existingClass = await orderClassCollection.findOne(query);
 
-  // if (existingClass) {
-  //   return res.send({ orderClassNameExists: true });
-  // } else {
-  //   return res.send({ orderClassNameExists: false });
-  // }
+  if (existingClass) {
+    return res.send({ orderClassNameExists: true });
+  } else {
+    return res.send({ orderClassNameExists: false });
+  }
 });
 
 
@@ -103,10 +133,13 @@ app.get('/orderClass/', async (req, res) => {
 
 app.post('/orderClass', async (req, res) => {
   const orderClass = req.body;
-  const query = { orderClassName: orderClass.orderClassName };
+  const query = { 
+    orderClassName: orderClass.orderClassName,
+    customerEmail: orderClass.customerEmail
+  };
   console.log({ query });
   const existClass = await orderClassCollection.findOne(query);
-  console.log(existClass, '744444');
+  // console.log(existClass, '744444');
   
   if (existClass) {
     return res.send({ message: 'This class already exists' });
