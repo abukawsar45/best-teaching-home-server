@@ -68,8 +68,8 @@ async function run() {
     })
 
 
-app.get('/orderClass/:email', async (req, res) => {
-  const email = req.params.email;
+app.get('/orderClass/', async (req, res) => {
+  const email = req.query.email;
   const orderClassName = req.query.orderClassName;
   console.log({email,orderClassName});
 
@@ -197,15 +197,40 @@ app.put('/feedback/:id', async (req, res) => {
       const email = req.decoded.email;
       const query ={email: email};
       const user = await studentCollection.findOne(query);
-      if(user?.email !== 'admin'){
+      if(user?.role !== 'admin'){
         return res.status(403).send({error:true, message: 'forbidden access'})
       }
       next();
     }
 
+       app.get('/allClass', async (req,res)=>{
+          const query = {status: 'approved'};
+      const results = await subjectCollection.find(query).toArray();
+      res.send(results);
+    } )
+
+        // verify admin
+        app.get('/admin/allClass/:email',verifyJWT,verifyAdmin, async (req,res)=>{
+           const email = req.params.email;
+    if(req.decoded.email !== email ){
+        return res.send({admin : false});
+      }
+
+      const results = await subjectCollection.find().sort({date: -1}).toArray();
+      res.send(results);
+    } )
+        app.get('/admin/allUser/:email',verifyJWT,verifyAdmin, async (req,res)=>{
+           const email = req.params.email;
+    if(req.decoded.email !== email ){
+        return res.send({admin : false});
+      }
+
+      const results = await studentCollection.find().sort({date: -1}).toArray();
+      res.send(results);
+    } )
+   
 
 
-    // verify admin
 
 
     app.get('/instructor/class/:email',verifyJWT, async (req,res)=>{
@@ -261,22 +286,7 @@ app.put('/feedback/:id', async (req, res) => {
     //   res.send(results);
     // } )
 
-        app.get('/allClass', async (req,res)=>{
-          const query = {status: 'approved'};
-      const results = await subjectCollection.find(query).toArray();
-      res.send(results);
-    } )
-
-        app.get('/admin/allClass/:email',verifyJWT,verifyAdmin, async (req,res)=>{
-           const email = req.params.email;
-    if(req.decoded.email !== email ){
-        return res.send({admin : false});
-      }
-
-      const results = await subjectCollection.find().sort({date: -1}).toArray();
-      res.send(results);
-    } )
-   
+ 
 
     app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
