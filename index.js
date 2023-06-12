@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const app = express();
 const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const req = require('express/lib/request');
 const port = process.env.PORT || 5000;
@@ -75,7 +76,7 @@ async function run() {
       }
 
     const query ={ customerEmail: email}
-    const result = await orderClassCollection.find(query).toArray();
+    const result = await orderClassCollection.find(query).sort({selectedDate: -1}).toArray();
     res.send(result);
   })
 
@@ -98,7 +99,7 @@ async function run() {
   // })
 
 
-app.get('/orderClass/', async (req, res) => {
+app.get('/orderClass', async (req, res) => {
   const email = req.query.email;
   const orderClassName = req.query.orderClassName;
   console.log({email,orderClassName});
@@ -211,7 +212,7 @@ app.put('/feedback/:id', async (req, res) => {
   res.send(result);
 });
 
-    app.put('/updateClass/:id', async (req,res)=>{
+    app.patch('/updateClass/:id', async (req,res)=>{
       const id = req.params.id;
       // console.log(id);
       const query = ({_id: new ObjectId(id) });
@@ -224,6 +225,40 @@ app.put('/feedback/:id', async (req, res) => {
       const result = await subjectCollection.updateOne(query, updateDoc);
       res.send(result);
     } )
+app.put('/updateOrderStatus/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const updateClass = req.body;
+    const classId = updateClass.classId;
+    const query2 = { _id: new ObjectId(classId) };
+
+    const updateDoc = {
+      $set: {
+        ...updateClass,
+      },
+    };
+
+    const updateSeat = {
+      $inc: {
+        availableSeat: -1,
+        
+      },
+    };
+
+    const result = await orderClassCollection.updateOne(query, updateDoc);
+    console.log(result);
+
+    const result2 = await subjectCollection.updateOne(query2,  { $inc: { availableSeat: -1 } });
+    console.log(result2);
+
+    res.send({ result, result2 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 
       // verify admin
     const verifyAdmin =async (req,res,next)=>{
@@ -372,10 +407,30 @@ app.post('/subjects', async (req, res) => {
       res.send(result)
     })
     
+    app.post('/paymentData',verifyJWT, async (req,res)=>{
+      const {price} = req.body;
+      const amount = price*100;
+      console.log({price,amount});
+      const email = req.query.email;
+      if(req.decoded.email !== email ){
+        return res.send({admin : false});
+      }
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      })
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
+
+
+  
+} finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
