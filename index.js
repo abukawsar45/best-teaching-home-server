@@ -85,6 +85,143 @@ async function run() {
   //   const result = await orderClassCollection.find(query).toArray();
   //   res.send(result);
   // } )
+// app.get('/topClass', async (req, res) => {
+//   const pipeline = [
+//     {
+//       $match: { status: 'paid' } // Only consider paid entries
+//     },
+//     {
+//       $group: {
+//         _id: '$classId',
+//         count: { $sum: 1 }, // Count the number of paid entries for each classId
+//         info: { $first: '$$ROOT' } // Accumulate the first document for each classId
+//       }
+//     },
+//     {
+//       $project: {
+//         _id: 0, // Exclude the default _id field from the result
+//         classId: '$_id', // Rename _id to classId
+//         count: 1, // Include the count field
+//         // Include additional fields as needed
+//         orderClassName:`$info.orderClassName`,
+//         orderClassImpage:`$info.orderClassImpage`,
+//         orderClassPrice:`$info.orderClassPrice`,
+//         instructorName:`$info.instructorName`,
+//         instructorEmail:`$info.instructorEmail`,
+//         instructorImage: `$info.instructorImage`
+
+//         // Add more fields here
+//       }
+//     },
+//     {
+//       $sort: { count: -1 } // Sort by the count in descending order
+//     }
+//   ];
+
+//   const result = await orderClassCollection.aggregate(pipeline).toArray();
+  
+  
+//   res.send(result);
+// });
+
+
+
+// app.get('/topClass', async (req, res) => {
+//   const pipeline = [
+//     {
+//       $match: { status: 'paid' } // Only consider paid entries
+//     },
+//     {
+//       $group: {
+//         _id: '$classId',
+//         count: { $sum: 1 }, // Count the number of paid entries for each classId
+//         info: { $first: '$$ROOT' } // Accumulate the first document for each classId
+//       }
+//     },
+//     {
+//       $project: {
+//         _id: 0, // Exclude the default _id field from the result
+//         classId: '$_id', // Rename _id to classId
+//         count: 1, // Include the count field
+//         orderClassName: '$info.orderClassName',
+//         orderClassImage: '$info.orderClassImage',
+//         orderClassPrice: '$info.orderClassPrice',
+//         instructorName: '$info.instructorName',
+//         instructorEmail: '$info.instructorEmail',
+//         instructorImage: '$info.instructorImage'
+//         // Include additional fields as needed
+//       }
+//     },
+//     {
+//       $sort: { count: -1 } // Sort by the count in descending order
+//     }
+//   ];
+
+//   const result = await orderClassCollection.aggregate(pipeline).toArray();
+
+//   const instructorEmails = result.map((item) => item.instructorEmail); // Get the instructor's emails from the result
+
+//   const query2 = {
+//     email: { $in: instructorEmails } // Filter by instructorEmails using the $in operator
+//   };
+
+//   const result2 = await studentCollection.find(query2).toArray();
+
+//   res.send({ result, result2 });
+// });
+
+// app.get('/topClass', async (req, res) => {
+//   const pipeline = [
+//     {
+//       $match: { status: 'paid' } // Only consider paid entries
+//     },
+//     {
+//       $group: {
+//         _id: '$classId',
+//         count: { $sum: 1 }, // Count the number of paid entries for each classId
+//         info: { $first: '$$ROOT' } // Accumulate the first document for each classId
+//       }
+//     },
+//     {
+//       $project: {
+//         _id: 0, // Exclude the default _id field from the result
+//         classId: '$_id', // Rename _id to classId
+//         count: 1, // Include the count field
+//         orderClassName: '$info.orderClassName',
+//         orderClassImage: '$info.orderClassImage',
+//         orderClassPrice: '$info.orderClassPrice',
+//         instructorName: '$info.instructorName',
+//         instructorEmail: '$info.instructorEmail',
+//         instructorImage: '$info.instructorImage'
+//         // Include additional fields as needed
+//       }
+//     },
+//     {
+//       $sort: { count: -1 } // Sort by the count in descending order
+//     }
+//   ];
+
+//   const result = await orderClassCollection.aggregate(pipeline).toArray();
+
+//   const instructorEmails = result.map((item) => item.instructorEmail); // Get the instructor's emails from the result
+
+//   const query2 = {
+//     email: { $in: instructorEmails } // Filter by instructorEmails using the $in operator
+//   };
+
+//   const result2 = await studentCollection.find(query2).toArray();
+
+//   const totalStudent = {};
+//   result2.forEach((item) => {
+//     const instructorEmail = item.email;
+//     const count = result.filter((classItem) => classItem.instructorEmail === instructorEmail)[0]?.count || 0;
+//     totalStudent[instructorEmail] = count;
+//   });
+
+//   res.send({ result, result2, totalStudent });
+// });
+
+
 app.get('/topClass', async (req, res) => {
   const pipeline = [
     {
@@ -102,15 +239,13 @@ app.get('/topClass', async (req, res) => {
         _id: 0, // Exclude the default _id field from the result
         classId: '$_id', // Rename _id to classId
         count: 1, // Include the count field
+        orderClassName: '$info.orderClassName',
+        orderClassImage: '$info.orderClassImpage',
+        orderClassPrice: '$info.orderClassPrice',
+        instructorName: '$info.instructorName',
+        instructorEmail: '$info.instructorEmail',
+        instructorImage: '$info.instructorImage'
         // Include additional fields as needed
-        orderClassName:`$info.orderClassName`,
-        orderClassImpage:`$info.orderClassImpage`,
-        orderClassPrice:`$info.orderClassPrice`,
-        instructorName:`$info.instructorName`,
-        instructorEmail:`$info.instructorEmail`,
-        instructorImage: `$info.instructorImage`
-
-        // Add more fields here
       }
     },
     {
@@ -119,12 +254,57 @@ app.get('/topClass', async (req, res) => {
   ];
 
   const result = await orderClassCollection.aggregate(pipeline).toArray();
-  
-  
-  res.send(result);
+
+  const instructorEmails = result.map((item) => item.instructorEmail); // Get the instructor's emails from the result
+
+  const query2 = {
+    email: { $in: instructorEmails } // Filter by instructorEmails using the $in operator
+  };
+
+  const result2 = await studentCollection.find(query2).sort({totalStudent:-1}).toArray();
+  const totalStudent = {};
+  result.forEach((item) => {
+    const instructorEmail = item.instructorEmail;
+    totalStudent[instructorEmail] = (totalStudent[instructorEmail] || 0) + item.count;
+  });
+
+
+  res.send({ result, result2, totalStudent });
 });
 
 
+// app.get('/topClass', async (req, res) => {
+//   const pipeline = [
+//     {
+//       $match: { status: 'paid' } // Only consider paid entries
+//     },
+//     {
+//       $group: {
+//         _id: '$classId',
+//         count: { $sum: 1 }, // Count the number of paid entries for each classId
+//         info: { $first: '$$ROOT' } // Accumulate the first document for each classId
+//       }
+//     },
+//     {
+//       $sort: { count: -1 } // Sort by the count in descending order
+//     }
+//   ];
+
+//   const result = await orderClassCollection.aggregate(pipeline).toArray();
+
+//   const classIds = result.map((item) => item.ins); // Extract classIds from the result
+
+//   const query2 = {
+//     _id: { $in: classIds } // Filter by classIds in the result
+//   };
+
+//   const result2 = await studentCollection
+//     .find(query2)
+//     .sort({ count: -1 }) // Sort by the previous paid count
+//     .toArray();
+
+//   res.send({ result, result2 });
+// });
 
 
        app.get('/allClass', async (req,res)=>{
@@ -502,7 +682,7 @@ app.post('/subjects', async (req, res) => {
     })
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    //console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
 
   
