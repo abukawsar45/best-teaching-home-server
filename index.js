@@ -20,7 +20,7 @@ const verifyJWT = (req,res,next)=>{
   }
   const token = authorization.split(' ')[1];
   // clg
-  // console.log(token);
+  // //console.log(token);
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(error, decoded)=>{
     if(error){
@@ -60,26 +60,72 @@ async function run() {
 // jwt post
     app.post('/jwt', (req,res)=>{
       const student = req.body;
-      // console.log(student);
+      // //console.log(student);
       const token = jwt.sign(student,process.env.ACCESS_TOKEN_SECRET,{
         expiresIn:'1h'
       })
       res.send({token})
-      // console.log({token});
+      // //console.log({token});
     })
+    // verify admin
+  const verifyAdmin =async (req,res,next)=>{
+    const email = req.decoded.email;
+    const query ={email: email};
+    const user = await studentCollection.findOne(query);
+    if(user?.role !== 'admin'){
+      return res.status(403).send({error:true, message: 'forbidden access'})
+    }
+    next();
+  }
 
   
 
-      // verify admin
-    const verifyAdmin =async (req,res,next)=>{
-      const email = req.decoded.email;
-      const query ={email: email};
-      const user = await studentCollection.findOne(query);
-      if(user?.role !== 'admin'){
-        return res.status(403).send({error:true, message: 'forbidden access'})
+  // app.get('/topClass',async (req,res)=>{
+  //   const query = {status: 'paid'};
+  //   const result = await orderClassCollection.find(query).toArray();
+  //   res.send(result);
+  // } )
+app.get('/topClass', async (req, res) => {
+  const pipeline = [
+    {
+      $match: { status: 'paid' } // Only consider paid entries
+    },
+    {
+      $group: {
+        _id: '$classId',
+        count: { $sum: 1 }, // Count the number of paid entries for each classId
+        info: { $first: '$$ROOT' } // Accumulate the first document for each classId
       }
-      next();
+    },
+    {
+      $project: {
+        _id: 0, // Exclude the default _id field from the result
+        classId: '$_id', // Rename _id to classId
+        count: 1, // Include the count field
+        // Include additional fields as needed
+        orderClassName:`$info.orderClassName`,
+        orderClassImpage:`$info.orderClassImpage`,
+        orderClassPrice:`$info.orderClassPrice`,
+        instructorName:`$info.instructorName`,
+        instructorEmail:`$info.instructorEmail`,
+        instructorImage: `$info.instructorImage`
+
+        // Add more fields here
+      }
+    },
+    {
+      $sort: { count: -1 } // Sort by the count in descending order
     }
+  ];
+
+  const result = await orderClassCollection.aggregate(pipeline).toArray();
+  
+  
+  res.send(result);
+});
+
+
+
 
        app.get('/allClass', async (req,res)=>{
           const query = {status: 'approved'};
@@ -116,20 +162,22 @@ async function run() {
       const results = await subjectCollection.find().sort({date: -1}).toArray();
       res.send(results);
     } )
+
         app.get('/admin/allUser/:email',verifyJWT,verifyAdmin, async (req,res)=>{
            const email = req.params.email;
+          //  //console.log(email);
     if(req.decoded.email !== email ){
         return res.send({admin : false});
       }
 // .sort({date: -1})
-      const results = await studentCollection.find().toArray();
+      const results = await studentCollection.find().sort({dete: -1}).toArray();
       res.send(results);
     } )
    
 
    app.get('/selectedClass/:email',verifyJWT, async (req, res) => {
     const email = req.params.email;
-    // console.log({email},'000000');
+    // //console.log({email},'000000');
       if(req.decoded.email !== email ){
         return res.send({admin : false});
       }
@@ -144,7 +192,7 @@ async function run() {
 
    app.get('/paidClass/:email',verifyJWT, async (req, res) => {
     const email = req.params.email;
-    // console.log({email},'000000');
+    // //console.log({email},'000000');
       if(req.decoded.email !== email ){
         return res.send({admin : false});
       }
@@ -161,25 +209,18 @@ async function run() {
 
   app.delete('/selectedClass/:id', async (req,res)=>{
     const id = req.params.id;
-    console.log(id);
+    //console.log(id);
     const query = {_id: new ObjectId(id)};
     const result = await orderClassCollection.deleteOne(query);
     res.send(result);
   })
-  // app.delete('/orderClass/:id',async (req,res) => {
-  //   const id = req.params.id;
-  //   console.log({id});
-  //   const query = {_id: new Object(id)};
-  //   const result = await orderClassCollection.deleteOne(query);
-  //   res.send(result);
-  //   console.log({result});
-  // })
+
 
 
 app.get('/orderClass', async (req, res) => {
   const email = req.query.email;
   const orderClassName = req.query.orderClassName;
-  console.log({email,orderClassName});
+  //console.log({email,orderClassName});
 
   const query = {
     customerEmail: email,
@@ -197,7 +238,7 @@ app.get('/orderClass', async (req, res) => {
 app.get('/totalPaidClass/:id', async (req, res) => {
   const classId = req.params.id;
   const orderClassName = req.query.orderClassName;
-  console.log({classId,orderClassName});
+  //console.log({classId,orderClassName});
 
   const query = {
     classId: classId,
@@ -207,22 +248,10 @@ app.get('/totalPaidClass/:id', async (req, res) => {
 
   const result = await orderClassCollection.find(query).toArray();
   res.send(result);
-  console.log({query,result});
+  //console.log({query,result});
 });
 
 
-    /*  app.get('/users/instructor/:email',verifyJWT, async (req,res)=>{
-      const email = req.params.email;
-      // if(req.email !== email ){
-       if(req.decoded.email !== email ){
-        return res.send({student : false, admin: false});
-      }
-      // console.log(email);
-      const query = {email: email};
-      const user = await studentCollection.findOne(query);
-      const result = {instructor: user?.role === 'instructor'};
-      res.send(result);
-    }) */
 
 app.post('/orderClass', async (req, res) => {
   const orderClass = req.body;
@@ -230,9 +259,9 @@ app.post('/orderClass', async (req, res) => {
     orderClassName: orderClass.orderClassName,
     customerEmail: orderClass.customerEmail
   };
-  console.log({ query });
+  //console.log({ query });
   const existClass = await orderClassCollection.findOne(query);
-  // console.log(existClass, '744444');
+  // //console.log(existClass, '744444');
   
   if (existClass) {
     return res.send({ message: 'This class already exists' });
@@ -246,14 +275,14 @@ app.post('/orderClass', async (req, res) => {
     // all subject post
 app.post('/subjects', async (req, res) => {
   const subject = req.body;
-  // console.log('subject'); // This line logs the string 'subject' to the console
+  // //console.log('subject'); // This line logs the string 'subject' to the //console
   const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
   res.send(result); // Sends the result as the response
 });
 
     app.get('/class/:id',async (req,res)=>{
       const id = req.params.id;
-      // console.log(id);
+      // //console.log(id);
       const query = {_id: new ObjectId(id) };
       const result = await subjectCollection.findOne(query);
       res.send(result);
@@ -263,7 +292,7 @@ app.post('/subjects', async (req, res) => {
 app.patch('/classesStatus/:id', async (req, res) => {
   const id = req.params.id;
   const status = req.query.status;
-  // console.log(id);
+  // //console.log(id);
   const query = { _id: new ObjectId(id) };
   let updateDoc = {};
   if (status === 'approve') {
@@ -282,24 +311,43 @@ app.patch('/classesStatus/:id', async (req, res) => {
   const result = await subjectCollection.updateOne(query, updateDoc);
   res.send(result);
 });
-app.put('/feedback/:id', async (req, res) => {
+app.patch('/students/role/:id',verifyJWT,verifyAdmin, async (req, res) => {
   const id = req.params.id;
-  const text = req.body.feedback ;
-  console.log(id, text);
+  const email = req.query.email;
+  const status = req.body.power;
+  //console.log({id,status});
+  if(req.decoded.email !== email){
+    return res.send({error: true, admin: false});
+  }
+  // //console.log(id);
   const query = { _id: new ObjectId(id) };
   const updateDoc = {
       $set: {
-        feedback: text
-      }
-    };
-    console.log(updateDoc);
-  const result = await subjectCollection.updateOne(query, updateDoc);
+        role: status
+    }
+  }
+  const result = await studentCollection.updateOne(query,updateDoc);
   res.send(result);
 });
 
+app.put('/feedback/:id', async (req, res) => {
+  const id=req.params.id;
+  const text = req.body.feedback;
+  //console.log({id,text});
+  const query = { _id: new ObjectId(id) };
+  const updateDoc ={
+    $set:{
+      feedback: text
+    }
+  }
+  //console.log({updateDoc});
+  const result = await subjectCollection.updateOne(query, updateDoc);
+  res.send(result)
+})
+
     app.patch('/updateClass/:id', async (req,res)=>{
       const id = req.params.id;
-      // console.log(id);
+      // //console.log(id);
       const query = ({_id: new ObjectId(id) });
       const updateClass = req.body;
       const updateDoc = {
@@ -324,10 +372,10 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
       },
     };
     const result = await orderClassCollection.updateOne(query, updateDoc);
-    // console.log(result);
+    // //console.log(result);
 
     const result2 = await subjectCollection.updateOne(query2,  { $inc: { availableSeat: -1 } });
-    // console.log(result2);
+    // //console.log(result2);
 
     res.send({ result, result2 });
 });
@@ -336,7 +384,7 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
 
     app.get('/instructor/class/:email',verifyJWT, async (req,res)=>{
       const email=req.params.email;
-      // console.log(email,87);
+      // //console.log(email,87);
       const result = await subjectCollection.find({email: email}).sort({date: -1}).toArray();
       res.send(result)
     } )
@@ -346,7 +394,7 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
     if(req.decoded.email !== email ){
         return res.send({student : false, instructor: false});
       }
-      // console.log(email);
+      // //console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {admin: user?.role === 'admin'};
@@ -359,7 +407,7 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
        if(req.decoded.email !== email ){
         return res.send({student : false, admin: false});
       }
-      // console.log(email);
+      // //console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {instructor: user?.role === 'instructor'};
@@ -367,11 +415,11 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
     })
     app.get('/users/student/:email',verifyJWT, async (req,res)=>{
       const email = req.params.email;
-      // console.log('109', {email, amar:email});
+      // //console.log('109', {email, amar:email});
       if(req.decoded.email !== email ){
         return res.send({instructor : false, admin: false});
       }
-      // console.log(email);
+      // //console.log(email);
       const query = {email: email};
       const user = await studentCollection.findOne(query);
       const result = {student: user?.role === 'student'};
@@ -382,16 +430,11 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
       const results = await studentCollection.find().toArray();
       res.send(results);
     } )
-    // app.get('/subjects', async (req,res)=>{
-    //   const results = await subjectCollection.find().toArray();
-    //   res.send(results);
-    // } )
-
- 
+  
 
     app.get('/students/:category', async (req, res) => {
   const category = req.params.category;
-  // console.log(category);
+  // //console.log(category);
     let filteredStudents;
     if (category === 'admin') {
       filteredStudents = await studentCollection.find({ role: 'admin' }).toArray();
@@ -407,10 +450,10 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
   // all student post
   app.post('/students', async(req,res)=>{
       const student = req.body;
-      // console.log('93');
+      // //console.log('93');
       const query = {email: student.email};
       const existStudent = await studentCollection.findOne(query);
-      // console.log(existStudent,'099009');
+      // //console.log(existStudent,'099009');
       if(existStudent){
         return res.send({message: 'Student already exist'});
       }
@@ -421,7 +464,7 @@ app.put('/updateOrderStatus/:id', async (req, res) => {
 // all subject post
 app.post('/subjects', async (req, res) => {
   const subject = req.body;
-  // console.log('subject'); // This line logs the string 'subject' to the console
+  // //console.log('subject'); // This line logs the string 'subject' to the //console
   const result = await subjectCollection.insertOne(subject); // Inserts the subject into the subjectCollection
   res.send(result); // Sends the result as the response
 });
@@ -429,7 +472,7 @@ app.post('/subjects', async (req, res) => {
 
     app.patch('/students/admin:id',async (req,res)=>{
       const id= req.params.id;
-      // console.log(id);
+      // //console.log(id);
       const filter = {_id: new ObjectId(id)};
       const updateRole = {
         $set: {
@@ -443,7 +486,7 @@ app.post('/subjects', async (req, res) => {
     app.post('/paymentData',verifyJWT, async (req,res)=>{
       const {price} = req.body;
       const amount = price*100;
-      console.log({price,amount});
+      //console.log({price,amount});
       const email = req.query.email;
       if(req.decoded.email !== email ){
         return res.send({admin : false});
@@ -459,7 +502,7 @@ app.post('/subjects', async (req, res) => {
     })
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    //console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
 
   
@@ -475,7 +518,7 @@ run().catch(console.dir);
 
 app.get('/', (req, res) => {
   res.send('best teaching home server is running!');
-});
+})
 app.get('/school', (req, res) => {
   res.send('best teaching school server is running!');
 });
